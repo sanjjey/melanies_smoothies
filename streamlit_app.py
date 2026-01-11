@@ -32,6 +32,8 @@ if ingredients_list:
     ingredients_string = ''
     for fruit_chosen in ingredients_list:
         ingredients_string += fruit_chosen + ' '
+        smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
+        sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
 
     # Build the insert statement
     my_insert_stmt = """ insert into smoothies.public.orders(ingredients, name_on_order)
@@ -46,8 +48,4 @@ if ingredients_list:
     st.subheader('SmoothieFroot Nutrition Information')
     
     # We start with a hardcoded fruit (watermelon) to test the connection
-    smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
-    
-    # 🥋 Let's Expose the JSON Data
-    # Convert the response object into readable JSON
-    fv_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+   
