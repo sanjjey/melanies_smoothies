@@ -1,52 +1,40 @@
-# Import python packages
 import streamlit as st
-import requests
-import pandas as pd
 from snowflake.snowpark.functions import col
+import requests
+import pandas as pd  # 🎯 Bringing in Pandas
 
-# Write directly to the app
-st.title("My Parents New Healthy Diner")
-st.write(
-    """Choose the fruits you want in your custom Smoothie!
-    """
-)
+st.title(":strawberry: Customize Your Smoothie! :strawberry:")
+st.write("Choose the fruits you want in your custom Smoothie!")
 
-# New connection method for Standalone Streamlit
 cnx = st.connection("snowflake")
 session = cnx.session()
 
-# Get the fruit options from Snowflake
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
+# 🥋 Updated to include the SEARCH_ON column
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
+
+# 🥋 Convert the Snowpark Dataframe to a Pandas Dataframe so we can use LOC
+pd_df = my_dataframe.to_pandas()
 
 name_on_order = st.text_input('Name on Smoothie:')
-st.write('The name on your Smoothie will be:', name_on_order)
 
-# Multiselect with the max_selections property researched by Mel
 ingredients_list = st.multiselect(
     'Choose up to 5 ingredients:',
-    my_dataframe,
+    my_dataframe, # Still uses the Snowflake df for the list
     max_selections=5
 )
 
 if ingredients_list:
     ingredients_string = ''
+
     for fruit_chosen in ingredients_list:
         ingredients_string += fruit_chosen + ' '
-        st.subheader('SmoothieFroot Nutrition Information')
-        smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
+        
+        # 🥋 The "Strange-Looking Statement"
+        # This looks for the FRUIT_NAME in our pandas df and grabs the matching SEARCH_ON value
+        search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
+        st.write('The search value for ', fruit_chosen,' is ', search_on, '.')
+
+        # Update the API call to use the search_on variable
+        st.subheader(fruit_chosen + ' Nutrition Information')
+        smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + search_on)
         sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
-
-    # Build the insert statement
-    my_insert_stmt = """ insert into smoothies.public.orders(ingredients, name_on_order)
-            values ('""" + ingredients_string + """','""" + name_on_order + """')"""
-
-    time_to_insert = st.button('Submit Order')
-
-    if time_to_insert:
-        session.sql(my_insert_stmt).collect()
-        st.success(f'Your Smoothie is ordered, {name_on_order}!', icon="✅")
-    # 🥋 Let's Call the SmoothieFroot API
-   
-    
-    # We start with a hardcoded fruit (watermelon) to test the connection
-   
